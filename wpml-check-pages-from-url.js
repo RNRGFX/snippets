@@ -8,3 +8,11 @@ jQuery('#icl-tm-translation-dashboard .post-title').each(function(i, el){
         jQuery(this).prev().find('input[type=checkbox]').prop( "checked", true );
     }
 });
+
+
+// Show url beside page name:
+
+jQuery('#icl-tm-translation-dashboard .post-title').each(function(i, el){
+    href = '<span style="color:blue">'+jQuery(this).find('.view a').attr('href')+'</span>';
+    jQuery(this).append(href)
+});
