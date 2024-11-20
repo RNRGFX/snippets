@@ -1,0 +1,9 @@
+# Insert BEFORE wp mod_reqrite
+# RNR GFX REDIRECT FOR MISSING IMAGES
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{HTTP_HOST} ^rnr\.gfx$
+RewriteRule ^wp-content/uploads/(.*)$ https://OTHERDOMAIN.com/wp-content/uploads/$1 [NC,L]
+</IfModule>
+# END RNR GFX
