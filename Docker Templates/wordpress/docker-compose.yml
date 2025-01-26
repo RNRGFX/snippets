@@ -1,0 +1,29 @@
+services:
+  wordpress:
+    container_name: ${PROJECT_NAME}_wordpress
+    image: wordpress:latest
+    environment:
+      SERVER_NAME: ${SERVER_NAME:-:80}
+      WORDPRESS_DB_HOST: mariadb
+      WORDPRESS_DB_USER: root
+      WORDPRESS_DB_PASSWORD: root
+      WORDPRESS_DB_NAME: ${PROJECT_NAME}_db
+#     WORDPRESS_DEBUG: 1
+      WORDPRESS_CONFIG_EXTRA: |
+          define('WP_SITEURL', 'http://${SERVER_NAME}');
+          define('WP_HOME', 'http://${SERVER_NAME}');
+    networks:
+      - rnrgfx
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.${PROJECT_NAME}.rule=Host(`${SERVER_NAME}`)"
+      - "traefik.http.routers.${PROJECT_NAME}.entrypoints=web" 
+    volumes:
+      - ./wp-content:/var/www/html/wp-content
+      - ./php.ini:/usr/local/etc/php/conf.d/custom.php.ini
+    restart: unless-stopped
+    tty: true
+  
+networks:
+  rnrgfx:
+    external: true

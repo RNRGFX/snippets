@@ -1,0 +1,36 @@
+version: "3.3"
+
+services:
+
+  traefik:
+    image: "traefik:v3.3"
+    container_name: "traefik"
+    command:
+      - "--log.level=DEBUG"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entryPoints.web.address=:80"
+    ports:
+      - "80:80"
+      - "8080:8080"
+      - "3306:3306"
+    volumes:
+      - /run/docker.sock:/run/docker.sock:ro
+      - ./config/:/etc/traefik/:ro
+    networks:
+      - rnrgfx        
+
+  whoami:
+    image: "traefik/whoami"
+    container_name: "simple-service"
+    networks:
+      - rnrgfx
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.whoami2.rule=Host(`whoami.localhost`)"
+      - "traefik.http.routers.whoami2.entrypoints=web"
+
+networks:
+  rnrgfx:
+    external: true  # <-- (Optional) Change this to false if you want to create a new network
