@@ -58,11 +58,16 @@ docker exec "$DB_CONTAINER" mariadb -u"$DB_ROOT_USER" -p"$DB_ROOT_PASS" -e "CREA
 echo -e "\e[32mStarting $PROJECT_NAME\e\n[0m"
 docker compose up -d
 
-# Get project folder
-SCRIPT_DIR_NAME="$(basename "$(dirname "$(realpath "$0")")")"
+# If node action / path is set, run it! 
+if [ ! -z "$NODE_ACTION" ] && [ ! -z "$NODE_PATH" ]; then
 
-# Nodejs script notice
-echo -e "\e[32m\nExecuting $NODE_ACTION in /home/node/$SCRIPT_DIR_NAME$NODE_PATH\e[0m"
+    # Get project folder
+    SCRIPT_DIR_NAME="$(basename "$(dirname "$(realpath "$0")")")"
 
-# Execute script in nodejs container - remember to update NODE_PATH and NODE_ACTION in .env
-docker exec -w /home/node/$SCRIPT_DIR_NAME$NODE_PATH nodejs $NODE_ACTION
+    # Nodejs script notice
+    echo -e "\e[32m\nExecuting $NODE_ACTION in /home/node/$SCRIPT_DIR_NAME$NODE_PATH\e[0m"
+
+    # Execute script in nodejs container - remember to update NODE_PATH and NODE_ACTION in .env
+    docker exec -w /home/node/$SCRIPT_DIR_NAME$NODE_PATH $NODE_NAME $NODE_ACTION
+
+fi
