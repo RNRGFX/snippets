@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Password notice if not sudo
+echo -e "\e[37m\nPlease enter your password if requested.\e[0m"   
+
 # Allow user to write to wp-content
 sudo chmod 777 -R wp-content
 
@@ -18,8 +21,6 @@ ip_address="127.0.0.1"
 matches_in_hosts="$(grep -n $SERVER_NAME /etc/hosts | cut -f1 -d:)"
 host_entry="${ip_address} ${SERVER_NAME}"
 
-# Password notice if not sudo
-echo -e "\e[37m\nPlease enter your password if requested.\e[0m"   
 
 
 if [ ! -z "$matches_in_hosts" ]
