@@ -1,0 +1,15 @@
+services:
+  cloudflaretunnel:
+    container_name: cloudflaretunnel
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    
+    environment:
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN}
+    command: tunnel --loglevel debug --no-autoupdate run
+    networks:
+      - rnrgfx
+
+networks:
+  rnrgfx:
+    external: true
