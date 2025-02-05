@@ -1,0 +1,25 @@
+services:
+  nodejs:
+    container_name: nodejs
+    image: node:23-alpine
+    volumes:
+      - ../:/home/node
+    working_dir: /home/node
+
+##  Run gulp
+#   command: "npm run gulp"
+
+##  keep idle
+    command: "tail -f /dev/null"
+
+##  install from package.json:
+#   command: "npm install"
+
+    restart: unless-stopped
+
+    networks:
+      - rnrgfx
+
+networks:
+  rnrgfx:
+    external: true
