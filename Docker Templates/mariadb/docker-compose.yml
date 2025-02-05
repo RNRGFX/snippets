@@ -15,8 +15,6 @@ services:
       - "traefik.tcp.routers.mariadb.entrypoints=mariadb"
       - "traefik.tcp.routers.mariadb.service=mariadb-svc"
       - "traefik.tcp.services.mariadb-svc.loadbalancer.server.port=3306"
-  ## For dump, run: 
-  #  docker exec mariadb mariadb-dump -u root --password=your_secure_root_password wordpress > wordpress.sql
 
 
   adminer:
@@ -30,6 +28,7 @@ services:
       ADMINER_DESIGN: dracula
     networks:
       - rnrgfx
+    command: ["php", "-d", "post_max_size=5000M", "-d", "upload_max_filesize=5000M", "-S", "0.0.0.0:8080", "-t", "/var/www/html"]
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.adminer.rule=Host(`adminer.localhost`)"
