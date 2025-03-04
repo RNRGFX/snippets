@@ -5,20 +5,17 @@ services:
   traefik:
     image: "traefik:v3.3"
     container_name: "traefik"
-    command:
-      - "--log.level=DEBUG"
-      - "--api.insecure=true"
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-      - "--entryPoints.web.address=:80"
     ports:
-      - "80:80"      
+      - "80:80"
       - "443:443"
       - "8080:8080"
       - "3306:3306"
     volumes:
       - /run/docker.sock:/run/docker.sock:ro
       - ./config/:/etc/traefik/:ro
+      - ./certs/:/var/traefik/certs/:rw
+    environment:
+      - CF_DNS_API_TOKEN=${CF_DNS_API_TOKEN}
     networks:
       - rnrgfx        
 
