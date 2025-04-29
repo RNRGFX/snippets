@@ -17,17 +17,9 @@ services:
     environment:
       - CF_DNS_API_TOKEN=${CF_DNS_API_TOKEN}
     networks:
-      - rnrgfx        
-
-  whoami:
-    image: "traefik/whoami"
-    container_name: "simple-service"
-    networks:
       - rnrgfx
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.whoami2.rule=Host(`whoami.localhost`)"
-      - "traefik.http.routers.whoami2.entrypoints=web"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
 networks:
   rnrgfx:
