@@ -33,7 +33,30 @@ entryPoints:
   websecure:
     address: :443
 
+disablePropagationCheck: false
 
+# -- Configure your CertificateResolver here...
+# certificatesResolvers:
+#  cloudflare:
+#    acme:
+#      email: daniel.garde@gmail.com  # <-- Change this to your email
+#      storage: /var/traefik/certs/cloudflare-acme.json
+#      caServer: "https://acme-v02.api.letsencrypt.org/directory"
+#      dnsChallenge:
+#        provider: cloudflare  # <-- (Optional) Change this to your DNS provider
+#        resolvers:
+#          - "1.1.1.1:53"
+#          - "8.8.8.8:53"
+
+tls:
+  stores:
+    default:
+      defaultCertificate:
+        certFile: /var/traefik/certs/cert.crt
+        keyFile: /var/traefik/certs/cert.key
+  certificates:
+    - certFile: /var/traefik/certs/nbt_bricks.crt
+      keyFile: /var/traefik/certs/nbt_bricks.key
 
 # --> (Optional) Disable TLS Cert verification check
 # serversTransport:
