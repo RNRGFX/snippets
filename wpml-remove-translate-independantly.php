@@ -1,8 +1,6 @@
 
 <?php 
 
-add_action('save_post', 'wpml_flag_post_for_independence', 99, 2);
-
 // Auto remove WPML duplicate post flag
 add_action('save_post', 'wpml_flag_post_for_independence', 99, 2);
 
