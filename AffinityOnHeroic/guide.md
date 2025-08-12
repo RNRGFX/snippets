@@ -64,7 +64,7 @@ Copy & paste the wine binaries you've extracted earlier to Heroic Games Launcher
 2. Select **Select the default wineprefix**.
 3. Choose **Change settings**.
 4. Enable the following settings:
-    - **win10**
+    - **win11**
     - **renderer=gl**
 5. Click **OK** and keep pressing **Cancel** until the Winetricks window closes.
 
