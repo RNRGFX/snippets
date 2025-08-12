@@ -1,9 +1,9 @@
-# Snatched from https://github.com/Twig6943/AffinityOnLinux/blob/main/Guides/Heroic/Guide.md
+### Snatched from https://github.com/Twig6943/AffinityOnLinux/blob/main/Guides/Heroic/Guide.md
 
 # How to Set Up Wine for Affinity on Heroic Games Launcher
-# Working on Ubuntu 24.04 LT with Nvidia RTX 2060 and x11
+## Working on Ubuntu 24.04 LT with Nvidia RTX 2060 and x11
 
-<img src="/Twig6943/AffinityOnLinux/blob/main/Assets/NewLogos/AffinityHGL.png" width="400"/>
+<img src="/AffinityHGL.png" width="400"/>
 
 ---
 ## 1. Install Heroic Games Launcher (Flatpak recommended)
