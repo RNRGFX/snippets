@@ -97,7 +97,7 @@ To optimize performance and reduce latency, adjust these settings:
 Quote from **darkside99**:  
 *"These are the best settings for improving performance and reducing latency."*
 
-![Performance.png](./Images/Performance.png)
+![Performance.png](./Performance.png)
 
 ---
 
