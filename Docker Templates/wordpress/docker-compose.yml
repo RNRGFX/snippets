@@ -4,26 +4,34 @@ services:
     image: wordpress:latest
     environment:
       SERVER_NAME: ${SERVER_NAME:-:80}
-      WORDPRESS_DB_HOST: mariadb
-      WORDPRESS_DB_USER: root
-      WORDPRESS_DB_PASSWORD: root
-      WORDPRESS_DB_NAME: ${PROJECT_NAME}_db
+      WORDPRESS_DB_HOST: ${DB_CONTAINER}
+      WORDPRESS_DB_USER: ${DB_ROOT_USER}
+      WORDPRESS_DB_PASSWORD: ${DB_ROOT_PASS}
+      WORDPRESS_DB_NAME: ${PROJECT_NAME}
+      WORDPRESS_TABLE_PREFIX: ${WP_TABLE_PREFIX:-wp_}
 #     WORDPRESS_DEBUG: 1
       WORDPRESS_CONFIG_EXTRA: |
-          define('WP_SITEURL', 'http://${SERVER_NAME}');
-          define('WP_HOME', 'http://${SERVER_NAME}');
+          define('WP_SITEURL', 'https://${SERVER_NAME}');
+          define('WP_HOME', 'https://${SERVER_NAME}');
+          define('WP_DEBUG', true);
+          define('WP_DEBUG_LOG', true);
+          define('WP_DEBUG_DISPLAY', false);
     networks:
       - rnrgfx
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.${PROJECT_NAME}.rule=Host(`${SERVER_NAME}`)"
-      - "traefik.http.routers.${PROJECT_NAME}.entrypoints=web" 
+      - traefik.enable=true
+      - traefik.http.routers.${PROJECT_NAME}.rule=Host(`${SERVER_NAME}`)
+      - traefik.http.routers.${PROJECT_NAME}.entrypoints=websecure
+      - traefik.http.services.${PROJECT_NAME}.loadbalancer.server.port=80
+      - traefik.http.routers.${PROJECT_NAME}.tls=true
+      - traefik.http.routers.${PROJECT_NAME}.tls.domains[0].main=${SERVER_NAME}
     volumes:
       - ./wp-content:/var/www/html/wp-content
       - ./php.ini:/usr/local/etc/php/conf.d/custom.php.ini
+      - ./.htaccess:/var/www/html/.htaccess
     restart: unless-stopped
     tty: true
-  
+
 networks:
   rnrgfx:
     external: true
