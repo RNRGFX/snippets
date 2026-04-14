@@ -1,0 +1,389 @@
+# Load .env if it exists
+set dotenv-load := true
+
+# ─────────────────────────────────────────────
+# Default: list all available recipes
+# ─────────────────────────────────────────────
+# List all available recipes
+default:
+    @just --list
+
+
+# ─────────────────────────────────────────────
+# NEW PROJECT SETUP
+# Walks through .env creation, php.ini, certs,
+# hosts, permissions, database, docker & node.
+# Use `just all y` to skip prompts and use defaults.
+# ─────────────────────────────────────────────
+# Run all setup steps
+all skip="n":
+    @just init-env {{skip}}
+    @just init-phpini
+    @just init-htaccess
+    @just up
+    @just create-wp-content
+    @just perm
+    @just addhost
+    @just database
+    @just node
+    @printf "\033[32m\n✓ Project setup complete!\033[0m\n"
+
+
+# ─────────────────────────────────────────────
+# Create .env interactively if it doesn't exist
+# Pass y to skip prompts and use defaults:
+#   just init-env y
+# ─────────────────────────────────────────────
+# Create .env file if it doesn't exist
+init-env skip="n":
+    #!/usr/bin/env bash
+    [ -f .env ] && set -a && source .env && set +a || true
+    set -euo pipefail
+
+    if [ -f .env ]; then
+        printf "\033[33m\n.env already exists — skipping creation.\033[0m\n"
+        exit 0
+    fi
+
+    # Defaults — project name is the current directory name
+    DEFAULT_PROJECT_NAME="$(basename "$(pwd)")"
+    DEFAULT_SERVER_NAME="${DEFAULT_PROJECT_NAME}.gfx"
+    DEFAULT_TABLE_PREFIX="wp_"
+    DEFAULT_DB_USER="root"
+    DEFAULT_DB_PASS="root"
+    DEFAULT_DB_CONTAINER="mariadb"
+
+    if [ "{{skip}}" = "y" ]; then
+        printf "\033[34m\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m\n"
+        printf "\033[34m  Using defaults — skipping prompts\033[0m\n"
+        printf "\033[34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m\n"
+        PROJECT_NAME="${DEFAULT_PROJECT_NAME}"
+        SERVER_NAME="${DEFAULT_SERVER_NAME}"
+        WP_TABLE_PREFIX="${DEFAULT_TABLE_PREFIX}"
+        DB_ROOT_USER="${DEFAULT_DB_USER}"
+        DB_ROOT_PASS="${DEFAULT_DB_PASS}"
+        DB_CONTAINER="${DEFAULT_DB_CONTAINER}"
+        NODE_ACTION=""
+        NODE_PATH=""
+        NODE_NAME=""
+    else
+        printf "\033[34m\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m\n"
+        printf "\033[34m  New project setup — configure your .env\033[0m\n"
+        printf "\033[34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m\n"
+
+        read -p "  Project name           (default: ${DEFAULT_PROJECT_NAME}):  " PROJECT_NAME
+        PROJECT_NAME="${PROJECT_NAME:-${DEFAULT_PROJECT_NAME}}"
+
+        read -p "  Server name            (default: ${PROJECT_NAME}.gfx):  " SERVER_NAME
+        SERVER_NAME="${SERVER_NAME:-${PROJECT_NAME}.gfx}"
+
+        read -p "  WordPress table prefix (default: wp_):       " WP_TABLE_PREFIX
+        WP_TABLE_PREFIX="${WP_TABLE_PREFIX:-${DEFAULT_TABLE_PREFIX}}"
+
+        read -p "  DB root username       (default: root):      " DB_ROOT_USER
+        DB_ROOT_USER="${DB_ROOT_USER:-${DEFAULT_DB_USER}}"
+
+        read -s -p "  DB root password       (default: root):      " DB_ROOT_PASS
+        echo ""
+        DB_ROOT_PASS="${DB_ROOT_PASS:-${DEFAULT_DB_PASS}}"
+
+        read -p "  DB container name      (default: mariadb):   " DB_CONTAINER
+        DB_CONTAINER="${DB_CONTAINER:-${DEFAULT_DB_CONTAINER}}"
+
+        read -p "  Node action (optional, e.g. npm run dev):    " NODE_ACTION
+        read -p "  Node path   (optional, e.g. /wp-content/themes/my-theme): " NODE_PATH
+        read -p "  Node container name    (optional, e.g. node):  " NODE_NAME
+    fi
+
+    {
+        printf '# Project Name\nPROJECT_NAME=%s\n\n' "${PROJECT_NAME}"
+        printf '# Server Name\nSERVER_NAME=%s\n\n' "${SERVER_NAME}"
+        printf '# WordPress table prefix\nWP_TABLE_PREFIX=%s\n\n' "${WP_TABLE_PREFIX}"
+        printf '# Database root credentials (dev only)\nDB_ROOT_USER=%s\nDB_ROOT_PASS=%s\n\n' "${DB_ROOT_USER}" "${DB_ROOT_PASS}"
+        printf '# Database container name\nDB_CONTAINER=%s\n\n' "${DB_CONTAINER}"
+        printf '# Node configuration (optional)\nNODE_ACTION=%s\nNODE_PATH=%s\nNODE_NAME=%s\n' "${NODE_ACTION}" "${NODE_PATH}" "${NODE_NAME}"
+    } > .env
+
+    printf "\033[32m\n✓ .env created:\033[0m\n"
+    printf "    PROJECT_NAME = %s\n" "${PROJECT_NAME}"
+    printf "    SERVER_NAME  = %s\n" "${SERVER_NAME}"
+    printf "    DB_CONTAINER = %s\n" "${DB_CONTAINER}"
+
+
+
+# ─────────────────────────────────────────────
+# Create php.ini if it doesn't exist
+init-phpini:
+    #!/usr/bin/env bash
+    [ -f .env ] && set -a && source .env && set +a || true
+    if [ -f php.ini ]; then
+        printf "\033[33m\nphp.ini already exists — skipping creation.\033[0m\n"
+        exit 0
+    fi
+
+    printf 'memory_limit = 10512M\nmax_execution_time = 3000\npost_max_size = 640M\nupload_max_filesize = 32G\nmax_input_time = 3000\nmax_input_vars = 30000\n' > php.ini
+
+    printf "\033[32m\n✓ php.ini created successfully!\033[0m\n"
+
+
+# ─────────────────────────────────────────────
+# Ensure wp-content directory exists
+create-wp-content:
+    #!/usr/bin/env bash
+    if [ ! -d wp-content ]; then
+        printf "\033[34m\nCreating wp-content directory...\033[0m\n"
+        mkdir -p wp-content
+        printf "\033[32m✓ wp-content created.\033[0m\n"
+    else
+        printf "\033[33m\nwp-content already exists — skipping.\033[0m\n"
+    fi
+
+
+# ─────────────────────────────────────────────
+# Docker commands
+# ─────────────────────────────────────────────
+# Start the Docker containers
+up:
+    docker compose up --detach
+
+# Stop the Docker containers
+stop:
+    docker compose stop
+
+# Remove the Docker containers
+down:
+    docker compose down --remove-orphans
+
+# Remove the Docker containers and volumes
+down-v:
+    docker compose down --remove-orphans --volumes
+
+# Restart the Docker containers
+restart: down up
+
+# Destroy the Docker containers and volumes
+destroy:
+    docker compose down --rmi all --volumes --remove-orphans
+
+# Remake the Docker containers
+remake:
+    docker compose down
+    docker compose up -d --force-recreate
+
+# List the Docker containers
+ps:
+    docker compose ps
+
+# Open a shell in the WordPress container
+web:
+    docker compose exec -it wordpress bash
+
+
+# ─────────────────────────────────────────────
+# Add host entry to /etc/hosts
+addhost:
+    #!/usr/bin/env bash
+    [ -f .env ] && set -a && source .env && set +a || true
+    set -euo pipefail
+    printf "\033[37m\nPlease enter your password if requested.\033[0m\n"
+    if grep -q "${SERVER_NAME}" /etc/hosts; then
+        printf "\033[33mHost ${SERVER_NAME} already exists in /etc/hosts.\n\033[0m\n"
+    else
+        printf "\033[34mAdding ${SERVER_NAME} to /etc/hosts...\033[0m\n"
+        echo "127.0.0.1 ${SERVER_NAME}" | sudo tee -a /etc/hosts > /dev/null
+        printf "\033[32m✓ Host entry added.\033[0m\n"
+    fi
+
+
+# ─────────────────────────────────────────────
+# Set permissions on wp-content & .htaccess
+perm:
+    #!/usr/bin/env bash
+    [ -f .env ] && set -a && source .env && set +a || true
+    set -euo pipefail
+    printf "\033[37m\nPlease enter your password if requested.\033[0m\n"
+    sudo chmod -R 777 wp-content
+    [ -f .htaccess ] && sudo chmod 777 .htaccess || true
+    sudo chown "$(whoami):$(whoami)" -R wp-content
+    printf "\033[32m✓ Permissions set.\033[0m\n"
+
+
+# ─────────────────────────────────────────────
+# Ensure the shared DB container is running and create the project database
+database:
+    #!/usr/bin/env bash
+    [ -f .env ] && set -a && source .env && set +a || true
+    set -euo pipefail
+
+    if docker ps -q -f name="${DB_CONTAINER}" | grep -q .; then
+        printf "\033[36mContainer ${DB_CONTAINER} is already running.\n\033[0m\n"
+    else
+        printf "\033[31mContainer ${DB_CONTAINER} is not running.\033[0m\n"
+        printf "\033[35mStarting ${DB_CONTAINER} and adminer...\033[0m\n"
+        docker start "${DB_CONTAINER}"
+        docker start adminer || true
+        until docker ps -q -f name="${DB_CONTAINER}" | grep -q .; do
+            echo "  Waiting for ${DB_CONTAINER} to start..."
+            sleep 2
+        done
+        printf "\033[36m✓ ${DB_CONTAINER} is up and running!\n\033[0m\n"
+    fi
+
+    docker exec "${DB_CONTAINER}" mariadb \
+        -u"${DB_ROOT_USER}" -p"${DB_ROOT_PASS}" \
+        -e "CREATE DATABASE IF NOT EXISTS \`${PROJECT_NAME}\`;"
+    printf "\033[32m✓ Database '${PROJECT_NAME}' ready.\033[0m\n"
+
+
+# ─────────────────────────────────────────────
+# Run node action if configured
+node:
+    #!/usr/bin/env bash
+    [ -f .env ] && set -a && source .env && set +a || true
+    set -euo pipefail
+    if [ -n "${NODE_ACTION:-}" ] && [ -n "${NODE_PATH:-}" ]; then
+        SCRIPT_DIR_NAME=$(basename "$(dirname "$(realpath "$(pwd)")")")
+        printf "\033[32m\nExecuting ${NODE_ACTION} in /home/node/${SCRIPT_DIR_NAME}${NODE_PATH}\033[0m\n"
+        docker exec -w "/home/node/${SCRIPT_DIR_NAME}${NODE_PATH}" -it "${NODE_NAME}" ${NODE_ACTION}
+    else
+        printf "\033[33m\nNo NODE_ACTION/NODE_PATH configured — skipping node step.\033[0m\n"
+    fi
+
+
+# ─────────────────────────────────────────────
+# TLS certificate (via Traefik)
+cert:
+    #!/usr/bin/env bash
+    [ -f .env ] && set -a && source .env && set +a || true
+    set -euo pipefail
+    CERT_DIR="${HOME}/Docker/traefik/certs"
+    DYNAMIC_DIR="${HOME}/Docker/traefik/config/dynamic"
+    DYNAMIC_FILE="${DYNAMIC_DIR}/${SERVER_NAME}.yml"
+
+    printf "\033[33m\nPlease enter your password if requested.\033[0m\n"
+    sudo openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -sha256 \
+        -keyout "${CERT_DIR}/${SERVER_NAME}.key" \
+        -out    "${CERT_DIR}/${SERVER_NAME}.crt" \
+        -subj   "/C=DA/ST=DK/L=CPH/O=RNRGFX/OU=DEV/CN=${SERVER_NAME}" \
+        -addext "subjectAltName=DNS:${SERVER_NAME},DNS:*.${SERVER_NAME}"
+    printf "\033[32m\n✓ Certificate created successfully!\033[0m\n"
+
+    # Write Traefik dynamic config so it's picked up automatically
+    printf "\033[34m\nWriting Traefik dynamic config to %s...\033[0m\n" "${DYNAMIC_FILE}"
+    mkdir -p "${DYNAMIC_DIR}"
+    printf "tls:\n  certificates:\n    - certFile: /var/traefik/certs/%s.crt\n      keyFile: /var/traefik/certs/%s.key\n" \
+        "${SERVER_NAME}" "${SERVER_NAME}" > "${DYNAMIC_FILE}"
+    printf "\033[32m✓ Traefik will pick up the cert automatically (watch: true).\033[0m\n"
+
+    printf "\033[34m\nTo import into Chrome visit:\033[0m\n"
+    printf "\033[36mchrome://certificate-manager/localcerts/usercerts\033[0m\n"
+    printf "\033[34mClick 'Import' and select: %s/%s.crt\033[0m\n" "${CERT_DIR}" "${SERVER_NAME}"
+
+
+# ─────────────────────────────────────────────
+# Create .htaccess as an empty file BEFORE `up`
+# so Docker volume-mounts it as a file, not a dir.
+# Run copy-htaccess manually after first `up` if
+# you need WordPress to populate it.
+# ─────────────────────────────────────────────
+# Create .htaccess as an empty file
+init-htaccess:
+    #!/usr/bin/env bash
+    # Remove if Docker already created it as a directory
+    if [ -d .htaccess ]; then
+        printf "\033[33m\n.htaccess is a directory — removing it first.\033[0m\n"
+        rm -rf .htaccess
+    fi
+    if [ ! -f .htaccess ]; then
+        printf "\033[34m\nCreating empty .htaccess file...\033[0m\n"
+        install -m 666 /dev/null .htaccess
+        printf "\033[32m✓ .htaccess file created.\033[0m\n"
+    else
+        printf "\033[33m\n.htaccess already exists — skipping.\033[0m\n"
+    fi
+
+# ─────────────────────────────────────────────
+# Copy .htaccess content from running container
+# Run this manually after WordPress has started
+# and generated its .htaccess
+# ─────────────────────────────────────────────
+# Copy .htaccess from the running container to the local directory
+copy-htaccess:
+    #!/usr/bin/env bash
+    [ -f .env ] && set -a && source .env && set +a || true
+    set -euo pipefail
+    printf "\033[34m\nCopying .htaccess from container...\033[0m\n"
+    docker exec "${PROJECT_NAME}_wordpress" cat /var/www/html/.htaccess > .htaccess
+    chmod 666 .htaccess
+    printf "\033[32m✓ .htaccess copied successfully.\033[0m\n"
+    ls -la .htaccess
+
+
+# ─────────────────────────────────────────────
+# Database backup
+backup:
+    #!/usr/bin/env bash
+    [ -f .env ] && set -a && source .env && set +a || true
+    set -euo pipefail
+    echo "Creating database backup for ${PROJECT_NAME}..."
+    docker exec "${DB_CONTAINER}" mariadb-dump \
+        -u "${DB_ROOT_USER}" --password="${DB_ROOT_PASS}" "${PROJECT_NAME}" \
+        > "${PROJECT_NAME}.sql"
+    echo "✓ Backup saved to ${PROJECT_NAME}.sql"
+
+# ─────────────────────────────────────────────
+# Open site in browser
+open:
+    #!/usr/bin/env bash
+    [ -f .env ] && set -a && source .env && set +a || true
+    set -euo pipefail
+    xdg-open "https://${SERVER_NAME}"
+
+# ─────────────────────────────────────────────
+# Import default SQL file (drops & recreates DB)
+import:
+    #!/usr/bin/env bash
+    [ -f .env ] && set -a && source .env && set +a || true
+    set -euo pipefail
+    SQL_FILE="${PROJECT_NAME}.sql"
+    [ -f "${SQL_FILE}" ] || { echo "Error: ${SQL_FILE} not found!"; exit 1; }
+    echo "Dropping and recreating database ${PROJECT_NAME}..."
+    docker exec "${DB_CONTAINER}" mariadb \
+        -u "${DB_ROOT_USER}" --password="${DB_ROOT_PASS}" \
+        -e "DROP DATABASE IF EXISTS \`${PROJECT_NAME}\`; CREATE DATABASE \`${PROJECT_NAME}\`;"
+    echo "Importing ${SQL_FILE}..."
+    docker exec -i "${DB_CONTAINER}" mariadb \
+        -u "${DB_ROOT_USER}" --password="${DB_ROOT_PASS}" "${PROJECT_NAME}" < "${SQL_FILE}"
+    echo "✓ Import completed successfully!"
+
+
+# ─────────────────────────────────────────────
+# Import a specific SQL file  →  just import-file FILE=dump.sql
+import-file FILE="":
+    #!/usr/bin/env bash
+    [ -f .env ] && set -a && source .env && set +a || true
+    set -euo pipefail
+    [ -n "{{FILE}}" ] || { echo "Error: specify a file with FILE=filename.sql"; exit 1; }
+    [ -f "{{FILE}}" ] || { echo "Error: {{FILE}} not found!"; exit 1; }
+    echo "Dropping and recreating database ${PROJECT_NAME}..."
+    docker exec "${DB_CONTAINER}" mariadb \
+        -u "${DB_ROOT_USER}" --password="${DB_ROOT_PASS}" \
+        -e "DROP DATABASE IF EXISTS \`${PROJECT_NAME}\`; CREATE DATABASE \`${PROJECT_NAME}\`;"
+    echo "Importing {{FILE}}..."
+    docker exec -i "${DB_CONTAINER}" mariadb \
+        -u "${DB_ROOT_USER}" --password="${DB_ROOT_PASS}" "${PROJECT_NAME}" < "{{FILE}}"
+    echo "✓ Import completed successfully!"
+
+
+# ─────────────────────────────────────────────
+# Import without dropping the database first
+import-preserve:
+    #!/usr/bin/env bash
+    [ -f .env ] && set -a && source .env && set +a || true
+    set -euo pipefail
+    SQL_FILE="${PROJECT_NAME}.sql"
+    [ -f "${SQL_FILE}" ] || { echo "Error: ${SQL_FILE} not found!"; exit 1; }
+    echo "Importing ${SQL_FILE} into existing database ${PROJECT_NAME}..."
+    docker exec -i "${DB_CONTAINER}" mariadb \
+        -u "${DB_ROOT_USER}" --password="${DB_ROOT_PASS}" "${PROJECT_NAME}" < "${SQL_FILE}"
+    echo "✓ Import completed successfully!"
