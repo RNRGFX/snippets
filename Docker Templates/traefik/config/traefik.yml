@@ -11,7 +11,7 @@ log:
 certificatesResolvers:
   letsencrypt:
     acme:
-      email: daniel@rnrgfx.dk
+      email: email@domain.com
       storage: /acme.json
       httpChallenge:
         entryPoint: web
