@@ -7,6 +7,15 @@ global:
 #     - level: [TRACE, DEBUG, INFO, WARN, ERROR, FATAL]
 log:
  level: DEBUG
+
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: daniel@rnrgfx.dk
+      storage: /acme.json
+      httpChallenge:
+        entryPoint: web
+ 
 # <--
 
 # --> (Optional) Enable accesslog here ...
